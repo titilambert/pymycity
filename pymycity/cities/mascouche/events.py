@@ -6,9 +6,10 @@ import json
 
 from bs4 import BeautifulSoup
 
-from pymycity.cities import CityFeature
+from pymycity.cities import CityFeature, feature_decorator
+from pymycity.item import Item
 
-URL = "https://ville.mascouche.qc.ca/services-aux-citoyens/calendrier/"
+URL = "https://ville.mascouche.qc.ca/services-aux-citoyens/calendrier/page/"
 
 TYPES = (("Bibliothèque", 28),
          ("Conseil municipal", 30),
@@ -48,7 +49,7 @@ class Events(CityFeature):
     name = "events"
 
     def _add_arguments(self):
-        self.parser.add_argument('-t', '--type', required=False,
+        self.parser.add_argument('-t', '--event_type', required=False,
                             choices=[et[0] for et in TYPES],
                             help='Event type')
         self.parser.add_argument('-l', '--location', required=False,
@@ -62,23 +63,30 @@ class Events(CityFeature):
                             help='Show only the next collect')
 
     async def cli_call(self, cli_args):
-        results = await self.call(cli_args.type, cli_args.location, cli_args.customer, cli_args.only_next)
+        results = await self.call(cli_args.event_type, cli_args.location, cli_args.customer,
+                                  show_all=cli_args.show_all,
+                                  count=cli_args.count)
         # print results
         event_type = "all"
-        if cli_args.type is not None:
-            event_type = cli_args.type
+        if cli_args.event_type is not None:
+            event_type = cli_args.event_type
         print("Next {} events for {}:".format(event_type,
                                               self.city.name.capitalize()))
         for result in results:
             print("")
-            print("    {}".format(result.get('title')))
-            print("    Date: {}".format(result.get('date')))
-            print("    Hour: {}".format(result.get('hour')))
-            print("    Location: {}".format(result.get('location')))
-            print("    URL: {}".format(result.get('url')))
+            print("    {}".format(result.title))
+            print("    Date: {}".format(result.start))
+            print("    Location: {}".format(result.location))
+            print("    URL: {}".format(result.url))
 
-    async def call(self, event_type=None, event_location=None, event_customer=None, only_next=False):
-        await self._get_aiohttpsession()
+    @feature_decorator
+    async def call(self, event_type=None, event_location=None, event_customer=None):
+        item_metadata = self._item_metadata
+        # Get count param
+        _count = globals().get('count')
+        if _count is None:
+            _count = 5
+        # Prepare
         event_list = []
         params = {}
         if dict(TYPES).get(event_type):
@@ -88,39 +96,46 @@ class Events(CityFeature):
         if dict(CUSTOMERS).get(event_customer):
             params["customer"] = dict(CUSTOMERS).get(event_customer)
 
-        raw_res = await self._session.get(url=URL, params=params)
-        html = await raw_res.text()
-        soup = BeautifulSoup(html, 'html.parser')
-        ul_node = soup.find("ul", class_="list-events")
-        event_nodes = ul_node.find_all("div", class_="entry-info")
-        for event_node in event_nodes:
-            event_subnode = event_node.find("ul", "entry-link")
-            event = {}
-            event["title"] = event_subnode.find("var", class_="atc_title").text
-            event["description"] = event_subnode.find("var", class_="atc_description").text
-            event["exact_location"] = event_subnode.find("var", class_="atc_location").text
-            raw_data = event_subnode.find("var", class_="atc_date_start").text
-            event["date_start"] = datetime.datetime.strptime(raw_data, "%Y-%m-%d %H:%M:%S")
-            raw_data = event_subnode.find("var", class_="atc_date_end").text
-            event["date_end"] = datetime.datetime.strptime(raw_data, "%Y-%m-%d %H:%M:%S")
-            event["date"] = event_node.find("li", class_="date").text.strip()
-            event["hour"] = ""
-            event_hour_node = event_node.find("li", class_="hours")
-            if event_hour_node:
-                event["hour"] = getattr(event_hour_node.find("span"), "text", None).strip()
-            event["location"] = ""
-            event_location_node = event_node.find("li", class_="location")
-            if event_location_node:
-                event["location"] = getattr(event_location_node.find("span"), "text", None).strip()
-            # Get url
-            event_node.find("ul", "entry-link").find("li").find("a").attrs.get('href')
-            event["url"] = ""
-            first_li_node = event_node.find("ul", "entry-link").find("li")
-            if first_li_node.find("a"):
-                event["url"] = first_li_node.find("a").attrs.get('href')
+        # TODO launch requests in the "same time"
+        for page in range(1, (_count // 6 + 2)):
+            event_url = URL + str(page)
+            raw_res = await self._session.get(url=event_url, params=params)
+            html = await raw_res.text()
+            soup = BeautifulSoup(html, 'html.parser')
+            ul_node = soup.find("ul", class_="list-events")
+            event_nodes = ul_node.find_all("div", class_="entry-info")
+            for event_node in event_nodes:
+                event_subnode = event_node.find("ul", "entry-link")
+                event = {}
+                # Get attributes
+                ## Title
+                title = event_subnode.find("var", class_="atc_title").text
+                ## Date start
+                raw_data = event_subnode.find("var", class_="atc_date_start").text
+                date_start = datetime.datetime.strptime(raw_data, "%Y-%m-%d %H:%M:%S")
+                ## Date end
+                raw_data = event_subnode.find("var", class_="atc_date_end").text
+                date_end = datetime.datetime.strptime(raw_data, "%Y-%m-%d %H:%M:%S")
+                ## Description
+                description = event_subnode.find("var", class_="atc_description").text
+                ## Location
+                location = event_subnode.find("var", class_="atc_location").text
+                ## Url
+                event_node.find("ul", "entry-link").find("li").find("a").attrs.get('href')
+                url = ""
+                first_li_node = event_node.find("ul", "entry-link").find("li")
+                if first_li_node.find("a"):
+                    url = first_li_node.find("a").attrs.get('href')
+                ## metadata
+                # Create object
+                item = Item(title,
+                            start=date_start,
+                            end=date_end,
+                            location=location,
+                            url=url,
+                            description=description,
+                            metadata=item_metadata)
+                # Add item
+                event_list.append(item)
 
-            event_list.append(event)
-
-        if only_next:
-            return [event_list[0]]
         return event_list

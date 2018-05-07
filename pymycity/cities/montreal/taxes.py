@@ -6,7 +6,8 @@ import json
 
 from bs4 import BeautifulSoup
 
-from pymycity.cities import CityFeature
+from pymycity.cities import CityFeature, feature_decorator
+from pymycity.item import Item
 
 MUNICIPAL_URL="http://ville.montreal.qc.ca/portal/page?_pageid=44,79217&_dad=portal&_schema=PORTAL"
 
@@ -18,29 +19,23 @@ class Taxes(CityFeature):
     name = "taxes"
 
     def _add_arguments(self):
-        self.parser.add_argument('-t', '--type', required=True,
+        self.parser.add_argument('-t', '--taxe-type', required=True,
                             choices=TYPES,
                             help='Taxe type')
-        self.parser.add_argument('-n', '--only-next',
-                            action="store_true", default=False,
-                            help='Show only the next dates')
-        self.parser.add_argument('-c', '--count',
-                            type=int, default=None,
-                            help='Show only N results')
 
     async def cli_call(self, cli_args):
-        results = await self.call(cli_args.type, cli_args.only_next, cli_args.count)
+        results = await self.call(cli_args.taxe_type,
+                                  show_all=cli_args.show_all,
+                                  count=cli_args.count)
         # print results
-        print("Next {} taxes for {}:".format(cli_args.type,
+        print("Next {} taxes for {}:".format(cli_args.taxe_type,
                                              self.city.name.capitalize()))
         for result in results:
-            print(result.strftime("    * %d %b %Y"))
+            print(result.start.strftime("    * %d %b %Y"))
 
-    async def call(self, taxe_type, only_next=False, count=None):
-        await self._get_aiohttpsession()
-        # Get day
-        today = datetime.date.today()
-        next_month = today + relativedelta.relativedelta(months=1)
+    @feature_decorator
+    async def call(self, taxe_type):
+        item_metadata = self._item_metadata
 
         taxe_days = []
 
@@ -56,26 +51,14 @@ class Taxes(CityFeature):
                     day = reg_res.group(3)
                     month = reg_res.group(2)
                     year = reg_res.group(4)
-                    tmpdatetime = datetime.datetime.strptime(" ".join((year, month, day)),
-                                                             "%Y %B %d")
-                    taxe_days.append(tmpdatetime.date())
+                    start = datetime.datetime.strptime(" ".join((year, month, day)),
+                                                             "%Y %B %d").date()
+                    title = "taxe municipale"
+                    item_metadata["type"] = "municipal"
+                    item = Item(title, start=start, metadata=item_metadata)
+                    taxe_days.append(item)
         elif taxe_type == "school":
+            # TODO
             pass
 
-        # Prepare output
-        results = []
-        # Sort result
-        taxe_days.sort()
-        # Keep only next date
-        if only_next:
-            for taxe_day in taxe_days:
-                if taxe_day - today > datetime.timedelta(0):
-                    results.append(taxe_day)
-        else:
-            results = taxe_days
-        # Handle count
-        if count is not None:
-            # Improve count handler
-            results = results[:count]
-        # return
-        return results
+        return taxe_days

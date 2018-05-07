@@ -6,12 +6,14 @@ import json
 
 from bs4 import BeautifulSoup
 
-from pymycity.cities import CityFeature
+from pymycity.cities import CityFeature, feature_decorator
+from pymycity.item import Item
 
 MUNICIPAL_URL="https://ville.mascouche.qc.ca/services-aux-citoyens/taxes/"
 SCHOOL_URL="https://ville.mascouche.qc.ca/services-aux-citoyens/taxes/"
 
-TYPES = ("school", "municipal")
+TYPES = ("scolaire", "municipale")
+# Remove this and use i18n
 MONTHS = {"janvier": 1,
           "février": 2,
           "mars": 3,
@@ -26,39 +28,37 @@ MONTHS = {"janvier": 1,
           "décembre": 12,
           }
 
+
 class Taxes(CityFeature):
 
     help = "List next taxes dates"
     name = "taxes"
 
     def _add_arguments(self):
-        self.parser.add_argument('-t', '--type', required=True,
+        self.parser.add_argument('-t', '--taxe-type', required=True,
                             choices=TYPES,
                             help='Taxe type')
-        self.parser.add_argument('-n', '--only-next',
-                            action="store_true", default=False,
-                            help='Show only the next dates')
-        self.parser.add_argument('-c', '--count',
-                            type=int, default=None,
-                            help='Show only N results')
 
     async def cli_call(self, cli_args):
-        results = await self.call(cli_args.type, cli_args.only_next, cli_args.count)
+        results = await self.call(cli_args.taxe_type,
+                                  show_all=cli_args.show_all,
+                                  count=cli_args.count)
         # print results
-        print("Next {} taxes for {}:".format(cli_args.type,
+        print("Next {} taxes for {}:".format(cli_args.taxe_type,
                                              self.city.name.capitalize()))
         for result in results:
-            print(result.strftime("    * %d %b %Y"))
+            print(result.start.strftime("    * %d %b %Y"))
 
-    async def call(self, taxe_type, only_next=False, count=None):
-        await self._get_aiohttpsession()
+    @feature_decorator
+    async def call(self, taxe_type, show_all=False, count=None):
+        item_metadata = self._item_metadata
         # Get day
         today = datetime.date.today()
         next_month = today + relativedelta.relativedelta(months=1)
 
         taxe_days = []
 
-        if taxe_type == "municipal":
+        if taxe_type == "municipale":
             raw_res = await self._session.get(MUNICIPAL_URL)
             res = await raw_res.text()
             #html = json.loads(res.content.decode('utf-8-sig')).get("html")
@@ -74,24 +74,12 @@ class Taxes(CityFeature):
                 day_int = int(re_day_int.group(0))
                 month_int = MONTHS[month]
                 year_int = int(year)
-                taxe_days.append(datetime.date(year_int, month_int, day_int))
+                start = datetime.date(year_int, month_int, day_int)
+                item_metadata["type"] = "municipale"
+                title = "taxe municipale"
+                item = Item(title=title, start=start, metadata=item_metadata)
+                taxe_days.append(item)
         elif taxe_type == "school":
             pass
 
-        # Prepare output
-        results = []
-        # Sort result
-        taxe_days.sort()
-        # Keep only next date
-        if only_next:
-            for taxe_day in taxe_days:
-                if taxe_day - today > datetime.timedelta(0):
-                    results.append(taxe_day)
-        else:
-            results = taxe_days
-        # Handle count
-        if count is not None:
-            # Improve count handler
-            results = results[:count]
-        # return
-        return results
+        return taxe_days

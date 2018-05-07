@@ -14,6 +14,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-T', '--timeout',
                         default=REQUESTS_TIMEOUT, help='Request timeout')
+    parser.add_argument('-a', '--show-all',
+                        action="store_true", default=False,
+                        help='Show all (not only the next dates)')
+    parser.add_argument('-c', '--count',
+                        type=int, default=None,
+                        help='Show only N results')
     subparsers = parser.add_subparsers(title='City',
                                        description='Supported Cities',
                                        dest='city',
