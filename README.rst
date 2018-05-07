@@ -43,4 +43,4 @@ Dev env
 ::
 
     virtualenv -p /usr/bin/python3 env
-    pip install -r requirements.txt 
+    pip install -r requirements.txt

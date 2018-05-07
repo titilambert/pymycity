@@ -4,11 +4,11 @@ install_requires = list(val.strip() for val in open('requirements.txt'))
 tests_require = list(val.strip() for val in open('test_requirements.txt'))
 
 setup(name='pymycity',
-      version='0.2.0',
+      version='0.2.1',
       description='Get your city live information',
       author='Thibault Cohen',
       author_email='titilambert@gmail.com',
-      url='http://github.org/titilambert/pymycity',
+      url='http://github.co,/titilambert/pymycity',
       packages=['pymycity'],
       entry_points={
           'console_scripts': [
