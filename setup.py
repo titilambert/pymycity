@@ -4,7 +4,7 @@ install_requires = list(val.strip() for val in open('requirements.txt'))
 tests_require = list(val.strip() for val in open('test_requirements.txt'))
 
 setup(name='pymycity',
-      version='0.1.0',
+      version='0.2.0',
       description='Get your city live information',
       author='Thibault Cohen',
       author_email='titilambert@gmail.com',
