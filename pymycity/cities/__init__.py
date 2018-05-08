@@ -63,7 +63,7 @@ def feature_decorator(func):
     def wrapper():
 
         @functools.wraps(func)
-        async def wrapped(obj, *args, show_all=True, count=None, **kwargs):
+        async def wrapped(obj, *args, show_all=False, count=None, **kwargs):
             # Prepare results
             results = []
             # Set aiohttp session
