@@ -8,7 +8,7 @@ PACKAGES = find_packages(exclude=['tests', 'tests.*'])
 long_desc = open('README.rst').read()
 
 setup(name='pymycity',
-      version='0.2.3',
+      version='0.2.4',
       description='Get your city live information',
       long_description=long_desc,
       author='Thibault Cohen',
