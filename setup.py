@@ -1,7 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
   
 install_requires = list(val.strip() for val in open('requirements.txt'))
 tests_require = list(val.strip() for val in open('test_requirements.txt'))
+
+PACKAGES = find_packages(exclude=['tests', 'tests.*'])
 
 long_desc = open('README.rst').read()
 
@@ -13,7 +15,7 @@ setup(name='pymycity',
 
       author_email='titilambert@gmail.com',
       url='http://github.com/titilambert/pymycity',
-      packages=['pymycity'],
+      packages=PACKAGES,
       entry_points={
           'console_scripts': [
               'pymycity = pymycity.__main__:main'
