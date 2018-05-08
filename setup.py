@@ -1,7 +1,25 @@
 from setuptools import setup, find_packages
   
-install_requires = list(val.strip() for val in open('requirements.txt'))
-tests_require = list(val.strip() for val in open('test_requirements.txt'))
+REQUIRES = [
+    'aiohttp==3.1.3',
+    'bs4',
+    'python-dateutil',
+]
+
+TEST_REQUIRES = [
+    # doc
+    'sphinx==1.6.3',
+    'sphinx-rtd-theme==0.2.4',
+    'sphinxcontrib-mermaid==0.2.1',
+    # dev
+    'pylint',
+    'pycodestyle',
+    'pytest',
+    'pytest-cov',
+    'pytest-html',
+    'colorlog',
+    'psutil',
+]
 
 PACKAGES = find_packages(exclude=['tests', 'tests.*'])
 
@@ -21,8 +39,8 @@ setup(name='pymycity',
               'pymycity = pymycity.__main__:main'
           ]
       },
-      install_requires=install_requires,
-      tests_require=tests_require,
+      install_requires=REQUIRES,
+      tests_require=TEST_REQUIRES,
       classifiers=[
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
