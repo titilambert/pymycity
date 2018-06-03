@@ -113,9 +113,11 @@ class Events(CityFeature):
                 ## Date start
                 raw_data = event_subnode.find("var", class_="atc_date_start").text
                 date_start = datetime.datetime.strptime(raw_data, "%Y-%m-%d %H:%M:%S")
+                date_start = self.timezone.localize(date_start)
                 ## Date end
                 raw_data = event_subnode.find("var", class_="atc_date_end").text
                 date_end = datetime.datetime.strptime(raw_data, "%Y-%m-%d %H:%M:%S")
+                date_end = self.timezone.localize(date_end)
                 ## Description
                 description = event_subnode.find("var", class_="atc_description").text
                 ## Location

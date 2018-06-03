@@ -11,6 +11,7 @@ class Mascouche(City):
     language = "fr"
     country = "canada"
     province = "québec"
+    timezone = 'America/Montreal'
     
     def __init__(self, parent_subparsers, httpsession=None):
         super().__init__(parent_subparsers, httpsession)

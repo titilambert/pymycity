@@ -6,6 +6,7 @@ import functools
 import os
 
 import aiohttp
+import pytz
 
 
 class City():
@@ -36,6 +37,7 @@ class CityFeature():
         self.parser = city.parser_command.add_parser(self.name, help=self.help)
         self._add_arguments()
         self._session = city._session
+        self.timezone = pytz.timezone(self.city.timezone)
         # Register new methods to the city object
         setattr(city, self.name, self.call)
         setattr(city, "cli_" + self.name, self.cli_call)
